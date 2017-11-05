@@ -215,6 +215,45 @@ class Plotter(object):
                 raise 'Error: data error in Plotter'
 
 
+class Plotter_Single(object):
+    """plot loss and accuracy, require import matplotlib.pyplot as plt"""
+    def __init__(self):
+        self.train_loss = []
+        self.val_loss = []
+
+    def train_update(self, loss):
+        if type(loss) != float:
+            loss = float(loss)
+        self.train_loss.append(loss)
+
+    def val_update(self, loss):
+        if type(loss) != float:
+            loss = float(loss)
+        self.val_loss.append(loss)
+
+    def draw(self, filename):
+        name = 'loss'
+        if len(self.val_loss) == len(self.train_loss):
+            plt.plot(self.train_loss, label='train')
+            plt.plot(self.val_loss, label='val')
+            plt.legend(loc='upper left')
+            plt.xlabel('epoch')
+            plt.title(name)
+
+            plt.tight_layout()
+            plt.savefig(filename)
+            plt.clf()
+
+        else: # no validation data
+            plt.plot(self.train_loss, label='train')
+            plt.legend(loc='upper left')
+            plt.xlabel('iteration')
+            plt.title(name)
+
+            plt.tight_layout()
+            plt.savefig(filename)
+            plt.clf()
+        
 
 class AccuracyTable(object):
     """compute accuracy for each class"""
