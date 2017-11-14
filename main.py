@@ -44,7 +44,7 @@ parser.add_argument('--gpu', default=0, type=int,
                     help='Which GPU to use?')
 
 def main():
-    global args 
+    global args
     args = parser.parse_args()
 
     os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu)
@@ -56,7 +56,7 @@ def main():
     model.cuda()
 
     # optimizer
-    optimizer = optim.Adam(model.parameters(), 
+    optimizer = optim.Adam(model.parameters(),
                            lr=args.lr,
                            weight_decay=args.weight_decay)
 
@@ -85,6 +85,8 @@ def main():
                                   batch_size=32,
                                   shuffle=False,
                                   num_workers=4)
+    global val_bs
+    val_bs = val_loader.batch_size
 
     # setup
     global iteration, print_interval, plotter, plotter_basic
@@ -94,7 +96,7 @@ def main():
     plotter_basic = Plotter_Single()
 
     global img_path
-    img_path = 'img/1104/'
+    img_path = 'img/1114/'
     if not os.path.exists(img_path):
         os.makedirs(img_path)
 
@@ -104,7 +106,8 @@ def main():
     for epoch in range(start_epoch, args.num_epoch):
         print('Epoch {}/{}'.format(epoch, args.num_epoch - 1))
         print('-' * 20)
-
+        if epoch == 0:
+            val_loss = validate(val_loader, model, optimizer, epoch=-1)
         train_loss = train(train_loader, model, optimizer, epoch, iteration)
         val_loss = validate(val_loader, model, optimizer, epoch)
 
@@ -133,7 +136,7 @@ def train(train_loader, model, optimizer, epoch, iteration):
         if iteration % print_interval == 0:
             print('Epoch%d[%d/%d]: Loss: %0.4f(%0.4f)' \
                 % (epoch, i, len(train_loader), losses.val, losses.avg))
-            
+
             plotter_basic.train_update(losses_basic.avg)
             plotter_basic.draw(img_path + 'train_basic.png')
 
@@ -153,21 +156,22 @@ def validate(val_loader, model, optimizer, epoch):
         output = model(data)
         loss = criterion(output.view(output.size(0), -1), target.view(target.size(0), -1))
         losses.update(loss.data[0], target.size(0), history=1)
-        
+
         if i == 0:
             vis_lab_target(data.data, target.data, output.data, epoch)
 
         if i % 50 == 0:
             print('Validating Epoch %d: [%d/%d]' \
                 % (epoch, i, len(val_loader)))
-            
+
     print('Validation Loss: %0.4f' % losses.avg)
 
     return losses.avg
 
 
 def vis_lab_target(data, target, output, epoch):
-    for i in range(4):
+    img_list = []
+    for i in range(min(32, val_bs)):
         l = torch.unsqueeze(torch.squeeze(data[i]), 0)
         ab_raw = target[i]
         ab_pred = output[i]
@@ -176,15 +180,23 @@ def vis_lab_target(data, target, output, epoch):
         pred = torch.cat((l, ab_pred), 0).cpu().numpy()
         raw = np.transpose(raw, (1,2,0))
         pred = np.transpose(pred, (1,2,0))
-        
         raw_rgb = color.lab2rgb(np.float64(raw * 255))
         pred_rgb = color.lab2rgb(np.float64(pred * 255))
-        plt.subplot(4,1,i+1)
-        plt.imshow(np.concatenate((raw_rgb, pred_rgb), 1))
-        plt.axis('off')
+
+        grey = l.cpu().numpy() * 2.0
+        grey = np.transpose(grey, (1,2,0))
+        grey = np.repeat(grey, 3, axis=2).astype(np.float64)
+        img_list.append(np.concatenate((grey, raw_rgb, pred_rgb), 1))
+
+    img_list = [np.concatenate(img_list[4*i:4*(i+1)], axis=1) for i in range(len(img_list) // 4)]
+    img_list = np.concatenate(img_list, axis=0)
+
+    plt.figure(figsize=(24,18))
+    plt.imshow(img_list)
+    plt.axis('off')
     plt.tight_layout()
     plt.savefig(img_path + 'epoch%d_val.png' % epoch)
-    plt.clf()    
+    plt.clf()
 
 
 if __name__ == '__main__':

@@ -149,6 +149,7 @@ class Plotter(object):
                 zipdata = zip([[self.train_loss, self.val_loss],
                                [self.train_acc, self.val_acc]],
                               ['loss', 'iou'])
+                plt.figure()
                 for i, (data, name) in enumerate(zipdata):
                     plt.subplot(1, 2, i+1)
                     plt.plot(data[0], label='train')
@@ -162,6 +163,7 @@ class Plotter(object):
             else: # no validation data
                 zipdata = zip([self.train_loss, self.train_acc],
                               ['loss', 'iou'])
+                plt.figure()
                 for i, (data, name) in enumerate(zipdata):
                     plt.subplot(1, 2, i+1)
                     plt.plot(data, label='train')
@@ -182,6 +184,7 @@ class Plotter(object):
                                'segmentation iou',
                                'classification loss',
                                'classification accuracy'])
+                plt.figure()
                 for i, (data, name) in enumerate(zipdata):
                     plt.subplot(2,2,i+1)
                     plt.plot(data[0], label='train')
@@ -202,6 +205,7 @@ class Plotter(object):
                                'segmentation iou',
                                'classification loss',
                                'classification accuracy'])
+                plt.figure()
                 for i, (data, name) in enumerate(zipdata):
                     plt.subplot(2,2,i+1)
                     plt.plot(data, label='train')
@@ -234,6 +238,7 @@ class Plotter_Single(object):
     def draw(self, filename):
         name = 'loss'
         if len(self.val_loss) == len(self.train_loss):
+            plt.figure()
             plt.plot(self.train_loss, label='train')
             plt.plot(self.val_loss, label='val')
             plt.legend(loc='upper left')
@@ -245,6 +250,7 @@ class Plotter_Single(object):
             plt.clf()
 
         else: # no validation data
+            plt.figure()
             plt.plot(self.train_loss, label='train')
             plt.legend(loc='upper left')
             plt.xlabel('iteration')
@@ -253,7 +259,7 @@ class Plotter_Single(object):
             plt.tight_layout()
             plt.savefig(filename)
             plt.clf()
-        
+
 
 class AccuracyTable(object):
     """compute accuracy for each class"""
