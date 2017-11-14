@@ -129,7 +129,7 @@ class Simple(nn.Module):
     ''''''
     def __init__(self, n_class=2):
         super(Simple, self).__init__()
-        
+
         self.conv1 = nn.Conv2d(1, 16, 3, stride=1, padding=1)
         self.relu1 = nn.ReLU(inplace=True)
         self.pool1 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
@@ -192,7 +192,83 @@ class Simple(nn.Module):
 
         h = self.score_fr(h)
         h = self.upscore(h)
-        # h = F.sigmoid(h)
+        h = F.tanh(h)
+        h = h[:, :, 16:16 + x.size()[2], 16:16 + x.size()[3]].contiguous()
+
+        return h
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                m.weight.data.normal_(0, 0.1)
+
+class Simple_Classify(nn.Module):
+    ''''''
+    def __init__(self, n_class=313):
+        super(Simple_Classify, self).__init__()
+
+        self.conv1 = nn.Conv2d(1, 16, 3, stride=1, padding=1)
+        self.relu1 = nn.ReLU(inplace=True)
+        self.pool1 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
+
+        self.conv2 = nn.Conv2d(16, 32, 3, stride=1, padding=1)
+        self.relu2 = nn.ReLU(inplace=True)
+        self.pool2 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
+
+        self.conv3 = nn.Conv2d(32, 64, 3, stride=1, padding=1)
+        self.relu3 = nn.ReLU(inplace=True)
+        self.pool3 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
+
+        self.conv4 = nn.Conv2d(64, 128, 3, stride=1, padding=1)
+        self.relu4 = nn.ReLU(inplace=True)
+        self.pool4 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
+
+        self.conv5 = nn.Conv2d(128, 256, 3, stride=1, padding=1)
+        self.relu5 = nn.ReLU(inplace=True)
+        self.pool5 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
+
+        self.conv6 = nn.Conv2d(256, 512, 3, stride=1, padding=1)
+        self.relu6 = nn.ReLU(inplace=True)
+
+        self.conv7 = nn.Conv2d(512, 512, 3, stride=1, padding=1)
+        self.relu7 = nn.ReLU(inplace=True)
+
+        self.score_fr = nn.Conv2d(512, n_class, 1)
+        self.upscore = nn.ConvTranspose2d(n_class, n_class, 64, stride=32,
+                                          bias=False)
+
+        self._initialize_weights()
+
+    def forward(self, x):
+        h = x
+        h = self.conv1(h)
+        h = self.relu1(h)
+        h = self.pool1(h)
+
+        h = self.conv2(h)
+        h = self.relu2(h)
+        h = self.pool2(h)
+
+        h = self.conv3(h)
+        h = self.relu3(h)
+        h = self.pool3(h)
+
+        h = self.conv4(h)
+        h = self.relu4(h)
+        h = self.pool4(h)
+
+        h = self.conv5(h)
+        h = self.relu5(h)
+        h = self.pool5(h)
+
+        h = self.conv6(h)
+        h = self.relu6(h)
+
+        h = self.conv7(h)
+        h = self.relu7(h)
+
+        h = self.score_fr(h)
+        h = self.upscore(h)
         h = h[:, :, 16:16 + x.size()[2], 16:16 + x.size()[3]].contiguous()
 
         return h

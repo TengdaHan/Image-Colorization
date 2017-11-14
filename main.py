@@ -1,5 +1,5 @@
 from load_data import lfw_Dataset
-# from loss import *
+from loss import CrossEntropy2d
 from transform import ReLabel, ToLabel, ToSP, Scale
 from model import *
 from utils import *
@@ -35,7 +35,8 @@ parser.add_argument('--num_epoch', default=20, type=int,
                     help='Number of epochs')
 parser.add_argument('--test', default='', type=str,
                     help='Path to the model')
-
+parser.add_argument('-c','--classify', action="store_true",
+                    help='Classify Color? (Zhang et al. 2016)')
 parser.add_argument('-p', '--plot', action="store_true",
                     help='Plot accuracy and loss?')
 parser.add_argument('-s','--save', action="store_true",
@@ -52,7 +53,10 @@ def main():
 
     # model
     # model = FCN32(n_class=2)
-    model = Simple(n_class=2)
+    if args.classify:
+        model = Simple_Classify(n_class=313)
+    else:
+        model = Simple(n_class=2)
     model.cuda()
 
     # optimizer
@@ -71,7 +75,8 @@ def main():
                                           transforms.ToTensor()])
 
     lfw_train = lfw_Dataset(data_root, mode='train',
-                      transform=image_transform)
+                      transform=image_transform,
+                      classify=args.classify)
 
     train_loader = data.DataLoader(lfw_train,
                                   batch_size=32,
@@ -79,7 +84,8 @@ def main():
                                   num_workers=4)
 
     lfw_val = lfw_Dataset(data_root, mode='test',
-                      transform=image_transform)
+                      transform=image_transform,
+                      classify=args.classify)
 
     val_loader = data.DataLoader(lfw_val,
                                   batch_size=32,
@@ -124,8 +130,11 @@ def train(train_loader, model, optimizer, epoch, iteration):
     for i, (data, target) in enumerate(train_loader):
         data, target = Variable(data.cuda()), Variable(target.cuda())
         output = model(data)
-        # import pdb; pdb.set_trace()
-        loss = criterion(output.view(output.size(0), -1), target.view(target.size(0), -1))
+        import pdb; pdb.set_trace()
+        if args.classify:
+            loss = CrossEntropy2d(output, target)
+        else:
+            loss = criterion(output.view(output.size(0), -1), target.view(target.size(0), -1))
         losses_basic.update(loss.data[0], target.size(0), history=1)
         losses.update(loss.data[0], target.size(0), history=1)
 
@@ -176,14 +185,14 @@ def vis_lab_target(data, target, output, epoch):
         ab_raw = target[i]
         ab_pred = output[i]
 
-        raw = torch.cat((l, ab_raw), 0).cpu().numpy()
-        pred = torch.cat((l, ab_pred), 0).cpu().numpy()
+        raw = torch.cat((l*100., ab_raw*110.), 0).cpu().numpy()
+        pred = torch.cat((l*100., ab_pred*110.), 0).cpu().numpy()
         raw = np.transpose(raw, (1,2,0))
         pred = np.transpose(pred, (1,2,0))
-        raw_rgb = color.lab2rgb(np.float64(raw * 255))
-        pred_rgb = color.lab2rgb(np.float64(pred * 255))
+        raw_rgb = color.lab2rgb(np.float64(raw))
+        pred_rgb = color.lab2rgb(np.float64(pred))
 
-        grey = l.cpu().numpy() * 2.0
+        grey = l.cpu().numpy()
         grey = np.transpose(grey, (1,2,0))
         grey = np.repeat(grey, 3, axis=2).astype(np.float64)
         img_list.append(np.concatenate((grey, raw_rgb, pred_rgb), 1))

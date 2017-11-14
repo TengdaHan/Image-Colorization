@@ -20,6 +20,8 @@ import csv
 from skimage import color
 from transform import ReLabel, ToLabel, ToSP, Scale
 
+from sklearn.neighbors import NearestNeighbors
+
 
 def pil_loader(path):
     with open(path, 'rb') as f:
@@ -34,6 +36,7 @@ class lfw_Dataset(data.Dataset):
         mode='test',
         transform=None,
         target_transform=None,
+        classify=False,
         loader=pil_loader):
 
         tic = time.time()
@@ -41,6 +44,7 @@ class lfw_Dataset(data.Dataset):
         self.loader = loader
         self.image_transform = transform
         self.imgpath = glob.glob(root + 'lfw_funneled/*/*')
+        self.classify = classify
 
         # read split
         self.train_people = set()
@@ -70,51 +74,49 @@ class lfw_Dataset(data.Dataset):
             for item in self.imgpath:
                 if item.split('/')[-2] in self.test_people:
                     self.path.append(item)
+
+        if classify:
+            ab_list = np.load('data/pts_in_hull.npy')
+            self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='ball_tree').fit(ab_list)
+
         print('Load %d images, used %fs' % (self.path.__len__(), time.time()-tic))
 
     def __getitem__(self, index):
         mypath = self.path[index]
         img = self.loader(mypath) # PIL Image
         img_lab = color.rgb2lab(np.array(img)) # np array
+        # print('start')
+        # print(np.amax(img_lab[:,:,0]), np.amin(img_lab[:,:,0]))
+        # print(np.amax(img_lab[:,:,1]), np.amin(img_lab[:,:,1]))
+        # print(np.amax(img_lab[:,:,2]), np.amin(img_lab[:,:,2]))
 
+        img_lab = img_lab[13:13+224, 13:13+224, :]
 
-        # print(type(np.array(img_lab)), 
-        #     np.amax(np.array(img_lab)[:,:,0]),
-        #     np.amax(np.array(img_lab)[:,:,1]),
-        #     np.amax(np.array(img_lab)[:,:,2]))
-        # test = lab2rgb(img_lab)
-        # test.save('img/1104/test.png')
-        # plt.imshow(np.array(test))
-        # plt.show()
-        # if self.image_transform is not None:
-        #     # img = self.image_transform(img)
-        #     img_lab = self.image_transform(img_lab)
-        # (h, w, c) = img_lab.shape
-        img_lab = img_lab[13:13+224, 13:13+224, :] / 225.
+        if self.classify:
+            X_a = np.ravel(img_lab[:,:,1])
+            X_b = np.ravel(img_lab[:,:,2])
+            img_ab = np.vstack((X_a, X_b)).T
+            _, ind = self.nbrs.kneighbors(img_ab)
+            ab_class = np.reshape(ind, (224,224))
+            # print(ab_class.shape, ab_class.dtype, np.amax(ab_class), np.amin(ab_class))
+            ab_class = torch.unsqueeze(torch.LongTensor(ab_class), 0)
+
         img_lab = torch.FloatTensor(np.transpose(img_lab, (2,0,1)))
+        # print('start')
+        # print(torch.max(img_lab[0,:,:]), torch.min(img_lab[0,:,:]))
+        # print(torch.max(img_lab[1,:,:]), torch.min(img_lab[1,:,:]))
+        # print(torch.max(img_lab[2,:,:]), torch.min(img_lab[2,:,:]))
 
-        img_l = torch.unsqueeze(img_lab[0],0)
-        img_ab = img_lab[1::]
+        img_l = torch.unsqueeze(img_lab[0],0) / 100. # L channel 0-100
+        img_ab = (img_lab[1::] + 0) / 110. # ab channel -110 - 110
 
+        if self.classify:
+            return img_l, ab_class
         return img_l, img_ab
 
 
     def __len__(self):
         return len(self.path)
-
-# def rgb2lab(im):
-#     srgb_profile = ImageCms.createProfile("sRGB")
-#     lab_profile  = ImageCms.createProfile("LAB")
-#     rgb2lab_transform = ImageCms.buildTransformFromOpenProfiles(srgb_profile, lab_profile, "RGB", "LAB")
-#     lab_im = ImageCms.applyTransform(im, rgb2lab_transform)
-#     return lab_im
-
-# def lab2rgb(im):
-#     srgb_profile = ImageCms.createProfile("sRGB")
-#     lab_profile  = ImageCms.createProfile("LAB")
-#     lab2rgb_transform = ImageCms.buildTransformFromOpenProfiles(lab_profile, srgb_profile, "LAB", "RGB")
-#     rgb_im = ImageCms.applyTransform(im, lab2rgb_transform)
-#     return rgb_im
 
 
 if __name__ == '__main__':
@@ -128,7 +130,7 @@ if __name__ == '__main__':
                           ])
 
     lfw = lfw_Dataset(data_root, mode='test',
-                      transform=image_transform)
+                      transform=image_transform, classify=True)
 
     data_loader = data.DataLoader(lfw,
                                   batch_size=4,
