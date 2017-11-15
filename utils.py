@@ -261,6 +261,82 @@ class Plotter_Single(object):
             plt.clf()
 
 
+class Plotter_GAN(object):
+    """plot loss for G and D, require import matplotlib.pyplot as plt"""
+    def __init__(self):
+        self.g_loss = []
+        self.d_loss = []
+
+    def g_update(self, loss):
+        if type(loss) != float:
+            loss = float(loss)
+        self.g_loss.append(loss)
+
+    def d_update(self, loss):
+        if type(loss) != float:
+            loss = float(loss)
+        self.d_loss.append(loss)
+
+    def draw(self, filename):
+        name = 'loss'
+        if len(self.g_loss) == len(self.d_loss):
+            plt.figure()
+            plt.plot(self.g_loss, label='G')
+            plt.plot(self.d_loss, label='D')
+            plt.legend(loc='upper left')
+            plt.xlabel('epoch')
+            plt.title(name)
+
+            plt.tight_layout()
+            plt.savefig(filename)
+            plt.clf()
+            plt.close()
+
+
+class Plotter_GAN_TV(object):
+    """plot loss for G and D with Training and Validation, require import matplotlib.pyplot as plt"""
+    def __init__(self):
+        self.g_loss_t = []
+        self.d_loss_t = []
+        self.g_loss_v = []
+        self.d_loss_v = []
+
+    def train_update(self, g_loss, d_loss):
+        if type(g_loss) != float:
+            g_loss = float(g_loss)
+        if type(d_loss) != float:
+            d_loss = float(d_loss)
+        self.g_loss_t.append(g_loss)
+        self.d_loss_t.append(d_loss)
+
+    def val_update(self, g_loss, d_loss):
+        if type(g_loss) != float:
+            g_loss = float(g_loss)
+        if type(d_loss) != float:
+            d_loss = float(d_loss)
+        self.g_loss_v.append(g_loss)
+        self.d_loss_v.append(d_loss)
+
+    def draw(self, filename):
+        name = 'loss'
+        if len(self.g_loss_t) == len(self.d_loss_t) and\
+           len(self.g_loss_v) == len(self.d_loss_v) and\
+           len(self.g_loss_t) == len(self.g_loss_v):
+            plt.figure()
+            plt.plot(self.g_loss_t, label='G_train')
+            plt.plot(self.d_loss_t, label='D_train')
+            plt.plot(self.g_loss_v, label='G_val')
+            plt.plot(self.d_loss_v, label='D_val')
+            plt.legend(loc='upper left')
+            plt.xlabel('epoch')
+            plt.title(name)
+
+            plt.tight_layout()
+            plt.savefig(filename)
+            plt.clf()
+            plt.close()
+
+
 class AccuracyTable(object):
     """compute accuracy for each class"""
     def __init__(self):

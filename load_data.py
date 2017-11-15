@@ -3,7 +3,7 @@ import os.path as osp
 import sys
 import numpy as np
 import pickle
-from PIL import Image, ImageCms
+from PIL import Image
 import matplotlib.pyplot as plt
 # plt.switch_backend('agg')
 import collections
@@ -15,6 +15,7 @@ from torchvision import transforms
 from torch.utils import data
 # from transform import HorizontalFlip, VerticalFlip
 import scipy.io as io
+import scipy.misc as misc
 import glob
 import csv
 from skimage import color
@@ -36,7 +37,8 @@ class lfw_Dataset(data.Dataset):
         mode='test',
         transform=None,
         target_transform=None,
-        classify=False,
+        types='',
+        show_ab=False,
         loader=pil_loader):
 
         tic = time.time()
@@ -44,7 +46,8 @@ class lfw_Dataset(data.Dataset):
         self.loader = loader
         self.image_transform = transform
         self.imgpath = glob.glob(root + 'lfw_funneled/*/*')
-        self.classify = classify
+        self.types = types
+        self.show_ab = show_ab # show ab channel in classify mode
 
         # read split
         self.train_people = set()
@@ -75,7 +78,12 @@ class lfw_Dataset(data.Dataset):
                 if item.split('/')[-2] in self.test_people:
                     self.path.append(item)
 
-        if classify:
+        np.random.seed(0)
+        if shuffle:
+            perm = np.random.permutation(len(self.path))
+            self.path = [self.path[i] for i in perm]
+
+        if types == 'classify':
             ab_list = np.load('data/pts_in_hull.npy')
             self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='ball_tree').fit(ab_list)
 
@@ -84,15 +92,12 @@ class lfw_Dataset(data.Dataset):
     def __getitem__(self, index):
         mypath = self.path[index]
         img = self.loader(mypath) # PIL Image
+        img = np.array(img)[13:13+224, 13:13+224, :]
+
         img_lab = color.rgb2lab(np.array(img)) # np array
-        # print('start')
-        # print(np.amax(img_lab[:,:,0]), np.amin(img_lab[:,:,0]))
-        # print(np.amax(img_lab[:,:,1]), np.amin(img_lab[:,:,1]))
-        # print(np.amax(img_lab[:,:,2]), np.amin(img_lab[:,:,2]))
+        # img_lab = img_lab[13:13+224, 13:13+224, :]
 
-        img_lab = img_lab[13:13+224, 13:13+224, :]
-
-        if self.classify:
+        if self.types == 'classify':
             X_a = np.ravel(img_lab[:,:,1])
             X_b = np.ravel(img_lab[:,:,2])
             img_ab = np.vstack((X_a, X_b)).T
@@ -101,26 +106,120 @@ class lfw_Dataset(data.Dataset):
             # print(ab_class.shape, ab_class.dtype, np.amax(ab_class), np.amin(ab_class))
             ab_class = torch.unsqueeze(torch.LongTensor(ab_class), 0)
 
+        img = (img - 127.5) / 127.5 # -1 to 1
+        img = torch.FloatTensor(np.transpose(img, (2,0,1)))
         img_lab = torch.FloatTensor(np.transpose(img_lab, (2,0,1)))
-        # print('start')
-        # print(torch.max(img_lab[0,:,:]), torch.min(img_lab[0,:,:]))
-        # print(torch.max(img_lab[1,:,:]), torch.min(img_lab[1,:,:]))
-        # print(torch.max(img_lab[2,:,:]), torch.min(img_lab[2,:,:]))
 
         img_l = torch.unsqueeze(img_lab[0],0) / 100. # L channel 0-100
         img_ab = (img_lab[1::] + 0) / 110. # ab channel -110 - 110
 
-        if self.classify:
+        if self.types == 'classify':
+            if self.show_ab:
+                return img_l, ab_class, img_ab
             return img_l, ab_class
-        return img_l, img_ab
+        elif self.types == 'raw':
+            return img_l, img
+            # if self.show_ab:
+            #     return img_l, img_ab, None
+        else:
+            return img_l, img_ab
 
+    def __len__(self):
+        return len(self.path)
+
+
+class Flower_Dataset(data.Dataset):
+    def __init__(self, root,
+        shuffle=False,
+        small=False,
+        mode='test',
+        transform=None,
+        target_transform=None,
+        types='',
+        show_ab=False,
+        loader=pil_loader):
+
+        tic = time.time()
+        self.root = root
+        self.loader = loader
+        self.image_transform = transform
+        self.imgpath = glob.glob(root + 'jpg/*.jpg')
+        self.types = types
+        self.show_ab = show_ab # show ab channel in classify mode
+
+        # read split
+        split_file = io.loadmat(root + 'datasplits.mat')
+
+        self.train_file = set([str(i).zfill(4) for i in np.hstack((split_file['trn1'][0], split_file['val1'][0]))])
+        self.test_file = set([str(i).zfill(4) for i in split_file['tst1'][0]])
+        assert self.train_file.__len__() == 1020
+        assert self.test_file.__len__() == 340
+
+        self.path = []
+        if mode == 'train':
+            for item in self.imgpath:
+                if item.split('/')[-1][6:6+4] in self.train_file:
+                    self.path.append(item)
+        elif mode == 'test':
+            for item in self.imgpath:
+                if item.split('/')[-1][6:6+4] in self.test_file:
+                    self.path.append(item)
+
+        self.path = sorted(self.path)
+
+        np.random.seed(0)
+        if shuffle:
+            perm = np.random.permutation(len(self.path))
+            self.path = [self.path[i] for i in perm]
+
+        if types == 'classify':
+            ab_list = np.load('data/pts_in_hull.npy')
+            self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='ball_tree').fit(ab_list)
+
+        print('Load %d images, used %fs' % (self.path.__len__(), time.time()-tic))
+
+    def __getitem__(self, index):
+        mypath = self.path[index]
+        img = self.loader(mypath) # PIL Image
+        img = np.array(img)
+        img = misc.imresize(img, (224, 224))
+
+        img_lab = color.rgb2lab(np.array(img)) # np array
+        # img_lab = img_lab[13:13+224, 13:13+224, :]
+
+        if self.types == 'classify':
+            X_a = np.ravel(img_lab[:,:,1])
+            X_b = np.ravel(img_lab[:,:,2])
+            img_ab = np.vstack((X_a, X_b)).T
+            _, ind = self.nbrs.kneighbors(img_ab)
+            ab_class = np.reshape(ind, (224,224))
+            # print(ab_class.shape, ab_class.dtype, np.amax(ab_class), np.amin(ab_class))
+            ab_class = torch.unsqueeze(torch.LongTensor(ab_class), 0)
+
+        img = (img - 127.5) / 127.5 # -1 to 1
+        img = torch.FloatTensor(np.transpose(img, (2,0,1)))
+        img_lab = torch.FloatTensor(np.transpose(img_lab, (2,0,1)))
+
+        img_l = torch.unsqueeze(img_lab[0],0) / 100. # L channel 0-100
+        img_ab = (img_lab[1::] + 0) / 110. # ab channel -110 - 110
+
+        if self.types == 'classify':
+            if self.show_ab:
+                return img_l, ab_class, img_ab
+            return img_l, ab_class
+        elif self.types == 'raw':
+            return img_l, img
+            # if self.show_ab:
+            #     return img_l, img_ab, None
+        else:
+            return img_l, img_ab
 
     def __len__(self):
         return len(self.path)
 
 
 if __name__ == '__main__':
-    data_root = '/home/htd/Documents/DATA/LFW/'
+    data_root = '/home/users/u5612799/DATA/OxFlower/'
     # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
     #                                  std=[0.229, 0.224, 0.225])
 
@@ -129,8 +228,8 @@ if __name__ == '__main__':
                               transforms.ToTensor(),
                           ])
 
-    lfw = lfw_Dataset(data_root, mode='test',
-                      transform=image_transform, classify=True)
+    lfw = Flower_Dataset(data_root, mode='test',
+                      transform=image_transform)
 
     data_loader = data.DataLoader(lfw,
                                   batch_size=4,
