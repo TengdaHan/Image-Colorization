@@ -1,4 +1,3 @@
-from load_data import lfw_Dataset
 from loss import CrossEntropy2d
 from transform import ReLabel, ToLabel, ToSP, Scale
 from model import *
@@ -86,14 +85,15 @@ def main():
     criterion = nn.MSELoss()
 
     # dataset
-    data_root = '/home/users/u5612799/DATA/LFW/'
+    data_root = '/home/users/u5612799/DATA/Spongebob/'
+    from load_data import Spongebob_Dataset as myDataset
 
     image_transform = transforms.Compose([transforms.CenterCrop(224),
                                           transforms.ToTensor()])
 
-    lfw_train = lfw_Dataset(data_root, mode='train',
+    lfw_train = myDataset(data_root, mode='train',
                       transform=image_transform,
-                      classify=args.classify,
+                      types='classify',
                       shuffle=True)
 
     train_loader = data.DataLoader(lfw_train,
@@ -101,11 +101,11 @@ def main():
                                   shuffle=False,
                                   num_workers=4)
 
-    lfw_val = lfw_Dataset(data_root, mode='test',
+    lfw_val = myDataset(data_root, mode='test',
                       transform=image_transform,
-                      classify=args.classify,
+                      types='classify',
                       show_ab=True,
-                      shuffle=False)
+                      shuffle=True)
 
     val_loader = data.DataLoader(lfw_val,
                                   batch_size=args.batch_size,
@@ -123,9 +123,9 @@ def main():
     plotter_basic = Plotter_Single()
 
     global img_path
-    img_path = 'img/1114/Classify_bs%d_%s_lr%s_test/' \
+    img_path = 'img/1116/ClassifyBob_bs%d_%s_lr%s_test/' \
                % (args.batch_size, 'Adam', str(args.lr))
-    model_path = 'model/1114/Classify_bs%d_%s_lr%s_test/' \
+    model_path = 'model/1116/ClassifyBob_bs%d_%s_lr%s_test/' \
                % (args.batch_size, 'Adam', str(args.lr))
     if not os.path.exists(img_path):
         os.makedirs(img_path)
@@ -195,7 +195,11 @@ def validate(val_loader, model, optimizer, epoch):
     losses = AverageMeter()
     model.eval()
 
-    for i, (data, target, ab) in enumerate(val_loader):
+    for i, mydata in enumerate(val_loader):
+        if args.classify:
+            (data, target, ab) = mydata
+        else:
+            (data, target) = mydata
         data, target = Variable(data.cuda()), Variable(target.cuda())
         output = model(data)
         if args.classify:

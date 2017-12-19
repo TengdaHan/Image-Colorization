@@ -22,9 +22,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-
-parser = argparse.ArgumentParser(description='Colorization Main')
-parser.add_argument('--batch_size', default=1, type=int,
+parser = argparse.ArgumentParser(description='Colorization using GAN')
+parser.add_argument('data', type='str',
+                    help='Root path for dataset')
+parser.add_argument('--large', action="store_true",
+                    help='Use larger images?')
+parser.add_argument('--batch_size', default=4, type=int,
                     help='Batch size: default 4')
 parser.add_argument('--lr', default=1e-4, type=float,
                     help='Learning rate for optimizer')
@@ -35,16 +38,14 @@ parser.add_argument('--num_epoch', default=20, type=int,
 parser.add_argument('--lamb', default=10, type=int,
                     help='Lambda for L1 Loss')
 parser.add_argument('--test', default='', type=str,
-                    help='Path to the model')
+                    help='Path to the model, for testing')
 parser.add_argument('--model_G', default='', type=str,
-                    help='Path to resume for G')
+                    help='Path to resume for Generator model')
 parser.add_argument('--model_D', default='', type=str,
-                    help='Path to resume for D')
+                    help='Path to resume for Discriminator model')
 
-parser.add_argument('-c','--classify', action="store_true",
-                    help='Classify Color? (Zhang et al. 2016)')
 parser.add_argument('-p', '--plot', action="store_true",
-                    help='Plot accuracy and loss?')
+                    help='Plot accuracy and loss diagram?')
 parser.add_argument('-s','--save', action="store_true",
                     help='Save model?')
 parser.add_argument('--gpu', default=0, type=int,
@@ -57,8 +58,7 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu)
 
     model_G = ConvGen()
-    model_D = ConvDis()
-
+    model_D = ConvDis(large=args.large)
 
     start_epoch_G = start_epoch_D = 0
     if args.model_G:
@@ -81,9 +81,11 @@ def main():
 
     # optimizer
     optimizer_G = optim.Adam(model_G.parameters(),
-                           lr=args.lr)
+                             lr=args.lr, betas=(0.5, 0.999),
+                             eps=1e-8, weight_decay=args.weight_decay)
     optimizer_D = optim.Adam(model_D.parameters(),
-                           lr=args.lr)
+                             lr=args.lr, betas=(0.5, 0.999),
+                             eps=1e-8, weight_decay=args.weight_decay)
     if args.model_G:
         optimizer_G.load_state_dict(checkpoint_G['optimizer'])
     if args.model_D:
@@ -96,28 +98,33 @@ def main():
     L1 = nn.L1Loss()
 
     # dataset
-    data_root = '/home/users/u5612799/DATA/OxFlower/'
-    from load_data import Flower_Dataset as myDataset
+    # data_root = '/home/users/u5612799/DATA/Spongebob/'
+    data_root = args.data
+    from load_data import Spongebob_Dataset as myDataset # TODO
 
     image_transform = transforms.Compose([transforms.CenterCrop(224),
                                           transforms.ToTensor()])
 
-    lfw_train = myDataset(data_root, mode='train',
+    data_train = myDataset(data_root, mode='train',
                       transform=image_transform,
                       types='raw',
-                      shuffle=True)
+                      shuffle=True,
+                      large=True
+                      )
 
-    train_loader = data.DataLoader(lfw_train,
+    train_loader = data.DataLoader(data_train,
                                   batch_size=args.batch_size,
                                   shuffle=False,
                                   num_workers=4)
 
-    lfw_val = myDataset(data_root, mode='test',
+    data_val = myDataset(data_root, mode='test',
                       transform=image_transform,
                       types='raw',
-                      shuffle=False)
+                      shuffle=True,
+                      large=True
+                      )
 
-    val_loader = data.DataLoader(lfw_val,
+    val_loader = data.DataLoader(data_val,
                                   batch_size=args.batch_size,
                                   shuffle=False,
                                   num_workers=4)
@@ -125,7 +132,7 @@ def main():
     global val_bs
     val_bs = val_loader.batch_size
 
-    # setup
+    # set up plotter, path, etc.
     global iteration, print_interval, plotter, plotter_basic
     iteration = 0
     print_interval = 5
@@ -133,9 +140,9 @@ def main():
     plotter_basic = Plotter_GAN()
 
     global img_path
-    img_path = 'img/1115/GANFlower_%dL1_bs%d_%s_lr%s/' \
+    img_path = 'img/1116/GANBobLarge_%dL1_bs%d_%s_lr%s/' \
                % (args.lamb, args.batch_size, 'Adam', str(args.lr))
-    model_path = 'model/1115/GANFlower_%dL1_bs%d_%s_lr%s/' \
+    model_path = 'model/1116/GANBobLarge_%dL1_bs%d_%s_lr%s/' \
                % (args.lamb, args.batch_size, 'Adam', str(args.lr))
     if not os.path.exists(img_path):
         os.makedirs(img_path)
@@ -150,7 +157,9 @@ def main():
         print('-' * 20)
         if epoch == 0:
             val_lerrG, val_errD = validate(val_loader, model_G, model_D, optimizer_G, optimizer_D, epoch=-1)
+        # train
         train_errG, train_errD = train(train_loader, model_G, model_D, optimizer_G, optimizer_D, epoch, iteration)
+        # validate
         val_lerrG, val_errD = validate(val_loader, model_G, model_D, optimizer_G, optimizer_D, epoch)
 
         plotter.train_update(train_errG, train_errD)
@@ -281,16 +290,16 @@ def validate(val_loader, model_G, model_D, optimizer_G, optimizer_D, epoch):
         data, target = Variable(data.cuda()), Variable(target.cuda())
 
         ########################
-        # update D network
+        # D network
         ########################
-        # train with real
+        # validate with real
         output = model_D(target)
         label = torch.FloatTensor(target.size(0)).fill_(real_label).cuda()
         labelv = Variable(label)
         errD_real = criterion(output, labelv)
         # D_x = output.data.mean()
 
-        # train with fake
+        # validate with fake
         fake =  model_G(data)
         labelv = Variable(label.fill_(fake_label))
         output = model_D(fake.detach())
@@ -300,7 +309,7 @@ def validate(val_loader, model_G, model_D, optimizer_G, optimizer_D, epoch):
         errD = errD_real + errD_fake
 
         ########################
-        # update G network
+        # G network
         ########################
         labelv = Variable(label.fill_(real_label))
         output = model_D(fake)
@@ -342,7 +351,7 @@ def vis_result(data, target, output, epoch):
     img_list = [np.concatenate(img_list[4*i:4*(i+1)], axis=1) for i in range(len(img_list) // 4)]
     img_list = np.concatenate(img_list, axis=0)
 
-    plt.figure(figsize=(24,18))
+    plt.figure(figsize=(36,27))
     plt.imshow(img_list)
     plt.axis('off')
     plt.tight_layout()

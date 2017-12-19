@@ -95,7 +95,7 @@ class ConvGen(nn.Module):
         h = self.bn3(h)
         h = self.relu3(h)
         pool3 =h
-
+        
         h = self.conv4(h) # 512,14,14
         h = self.bn4(h)
         h = self.relu4(h)
@@ -141,7 +141,7 @@ class ConvGen(nn.Module):
 
 class ConvDis(nn.Module):
     ''''''
-    def __init__(self):
+    def __init__(self, large=False):
         super(ConvDis, self).__init__()
 
         self.conv1 = nn.Conv2d(3, 64, 3, stride=2, padding=1, bias=False)
@@ -164,7 +164,10 @@ class ConvDis(nn.Module):
         self.bn5 = nn.BatchNorm2d(512)
         self.relu5 = nn.LeakyReLU(0.1)
 
-        self.conv6 = nn.Conv2d(512, 512, 7, stride=1, padding=0, bias=False)
+        if large:
+            self.conv6 = nn.Conv2d(512, 512, 15, stride=1, padding=0, bias=False)
+        else:
+            self.conv6 = nn.Conv2d(512, 512, 7, stride=1, padding=0, bias=False)
         self.bn6 = nn.BatchNorm2d(512)
         self.relu6 = nn.LeakyReLU(0.1)
 
@@ -211,6 +214,9 @@ class ConvDis(nn.Module):
             if isinstance(m, nn.ConvTranspose2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
                 m.weight.data.normal_(0, math.sqrt(2. / n))
+
+
+
 
 if __name__ == '__main__':
     model = FCN32()
