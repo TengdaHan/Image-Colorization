@@ -6,17 +6,17 @@ The input of the network is 1-channel greyscale image (specifically, the 'L' cha
 
 The generator has an encoder-decoder architecture; the discriminator is just one encoder plus fully-connected layers which gives one-class output. Skip-connection is applied in generator (U-Net). For 224x224 images, the architecture of generator is shown below. 
 
-![unet](asset/unet.png)
+<img src="asset/unet.png" width="640" align="middle">
 
 Each block contains Conv(transpose Conv) layer, BatchNormalization and Leaky ReLU. Final activation function for generator is tanh; for discriminator its sigmoid. Input images are normalized before feeding into the network. 
 
 Overall, the objective function for Conditional GAN is:
 
-![gan](asset/gan.png)
+<img src="asset/gan.png" width="40%" height="40%">
 
 for generator, a regularization term is added using L1 distance:
 
-![gen](asset/gen.png)
+<img src="asset/gen.png" width="40%" height="40%">
 
 where the coefficient lambda 100 is used. The model is optimized using Adam optimizer with minor changes.
 
