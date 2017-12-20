@@ -31,7 +31,27 @@ The model is universal for all kinds of colorful image dataset. Three datasets a
 
 ## Instruction
 
+### Prepare Dataset
+
 not ready yet
+
+### Training (and validation)
+
+* Example command to train SC2 dataset:
+
+`python gan_main.py --path my_path --dataset sc2 --batch_size 32 --lr 1e-3 --num_epoch 50 --lamb 100 -p -s --gpu 0`
+
+Replace `my_path` by the root path of SC2 dataset. 
+
+Image samples created during validation will be saved in `img/`; and the model will be saved in `model/` if `-s` option is used. 
+
+### Testing
+
+* __Testing is not implemented in this version__. But you can prepare a testing dataset and run command like:
+
+`python gan_main.py --path my_path --dataset sc2 --test my_path --gpu 0`
+
+to test the model with unseen images. Replace `my_path` by the path of the model that was saved during the training process.
 
 ## Result
 

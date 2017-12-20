@@ -36,7 +36,7 @@ parser.add_argument('--weight_decay', default=0, type=float,
                     help='Weight decay for optimizer')
 parser.add_argument('--num_epoch', default=20, type=int,
                     help='Number of epochs')
-parser.add_argument('--lamb', default=10, type=int,
+parser.add_argument('--lamb', default=100, type=int,
                     help='Lambda for L1 Loss')
 parser.add_argument('--test', default='', type=str,
                     help='Path to the model, for testing')
@@ -45,8 +45,8 @@ parser.add_argument('--model_G', default='', type=str,
 parser.add_argument('--model_D', default='', type=str,
                     help='Path to resume for Discriminator model')
 
-parser.add_argument('-p', '--plot', action="store_true",
-                    help='Plot accuracy and loss diagram?')
+# parser.add_argument('-p', '--plot', action="store_true",
+#                     help='Plot accuracy and loss diagram?')
 parser.add_argument('-s','--save', action="store_true",
                     help='Save model?')
 parser.add_argument('--gpu', default=0, type=int,
