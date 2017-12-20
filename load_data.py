@@ -6,7 +6,6 @@ import pickle
 from PIL import Image
 import matplotlib.pyplot as plt
 # plt.switch_backend('agg')
-import collections
 import time
 
 import torch
@@ -186,7 +185,6 @@ class Flower_Dataset(data.Dataset):
             img_ab = np.vstack((X_a, X_b)).T
             _, ind = self.nbrs.kneighbors(img_ab)
             ab_class = np.reshape(ind, (224,224))
-            # print(ab_class.shape, ab_class.dtype, np.amax(ab_class), np.amin(ab_class))
             ab_class = torch.unsqueeze(torch.LongTensor(ab_class), 0)
 
         img = (img - 127.5) / 127.5 # -1 to 1

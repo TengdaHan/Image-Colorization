@@ -1,5 +1,4 @@
-from loss import CrossEntropy2d
-from transform import ReLabel, ToLabel, ToSP, Scale
+# from transform import ReLabel, ToLabel, ToSP, Scale
 from gan_model import *
 from utils import *
 
@@ -23,8 +22,10 @@ import matplotlib.pyplot as plt
 
 
 parser = argparse.ArgumentParser(description='Colorization using GAN')
-parser.add_argument('data', type='str',
+parser.add_argument('path', type='str',
                     help='Root path for dataset')
+parser.add_argument('dataset', type='str'
+                    help='which dataset?', choices=['sc2','flower','bob'])
 parser.add_argument('--large', action="store_true",
                     help='Use larger images?')
 parser.add_argument('--batch_size', default=4, type=int,
@@ -52,8 +53,9 @@ parser.add_argument('--gpu', default=0, type=int,
                     help='Which GPU to use?')
 
 def main():
-    global args
+    global args, date
     args = parser.parse_args()
+    date = '1220'
 
     os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu)
 
@@ -99,17 +101,29 @@ def main():
 
     # dataset
     # data_root = '/home/users/u5612799/DATA/Spongebob/'
-    data_root = args.data
-    from load_data import Spongebob_Dataset as myDataset # TODO
+    data_root = args.path
+    dataset = args.dataset
+    if dataset == 'sc2':
+        from load_data import SC2_Dataset as myDataset
+    elif dataset == 'flower':
+        from load_data import Flower_Dataset as myDataset
+    elif dataset == 'bob':
+        from load_data import Spongebob_Dataset as myDataset
+    else:
+        raise ValueError('dataset type not supported')
 
-    image_transform = transforms.Compose([transforms.CenterCrop(224),
-                                          transforms.ToTensor()])
+    if args.large:
+        image_transform = transforms.Compose([transforms.CenterCrop(480),
+                                              transforms.ToTensor()])
+    else:
+        image_transform = transforms.Compose([transforms.CenterCrop(224),
+                                              transforms.ToTensor()])
 
     data_train = myDataset(data_root, mode='train',
                       transform=image_transform,
                       types='raw',
                       shuffle=True,
-                      large=True
+                      large=args.large
                       )
 
     train_loader = data.DataLoader(data_train,
@@ -121,7 +135,7 @@ def main():
                       transform=image_transform,
                       types='raw',
                       shuffle=True,
-                      large=True
+                      large=args.large
                       )
 
     val_loader = data.DataLoader(data_val,
@@ -140,10 +154,12 @@ def main():
     plotter_basic = Plotter_GAN()
 
     global img_path
-    img_path = 'img/1116/GANBobLarge_%dL1_bs%d_%s_lr%s/' \
-               % (args.lamb, args.batch_size, 'Adam', str(args.lr))
-    model_path = 'model/1116/GANBobLarge_%dL1_bs%d_%s_lr%s/' \
-               % (args.lamb, args.batch_size, 'Adam', str(args.lr))
+    size = ''
+    size = 'Large' if args.large
+    img_path = 'img/%s/GANBob%s_%dL1_bs%d_%s_lr%s/' \
+               % (date, size, args.lamb, args.batch_size, 'Adam', str(args.lr))
+    model_path = 'model/%s/GANBob%s_%dL1_bs%d_%s_lr%s/' \
+               % (date, size, args.lamb, args.batch_size, 'Adam', str(args.lr))
     if not os.path.exists(img_path):
         os.makedirs(img_path)
     if not os.path.exists(model_path):
@@ -239,6 +255,7 @@ def train(train_loader, model_G, model_D, optimizer_G, optimizer_D, epoch, itera
         D_G_x2 = output.data.mean()
         optimizer_G.step()
 
+        # store error values
         errorG.update(errG.data[0], target.size(0), history=1)
         errorD.update(errD.data[0], target.size(0), history=1)
         errorG_basic.update(errG.data[0], target.size(0), history=1)
@@ -259,11 +276,11 @@ def train(train_loader, model_G, model_D, optimizer_G, optimizer_D, epoch, itera
                 errorG_basic.avg, errorG_GAN.avg, errorG_R.avg,
                 D_x, D_G_x1, D_G_x2
                 ))
-
+            # plot image
             plotter_basic.g_update(errorG_basic.avg)
             plotter_basic.d_update(errorD_basic.avg)
             plotter_basic.draw(img_path + 'train_basic.png')
-
+            # reset AverageMeter
             errorG_basic.reset()
             errorD_basic.reset()
             errorD_real.reset()

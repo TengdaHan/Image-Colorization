@@ -1,39 +1,11 @@
-import os
-import os.path as osp
-import sys
-import numpy as np
-import matplotlib.pyplot as plt
-import collections
-import time
 import math
-
 import torch
 import torch.nn as nn
-from torch.utils import data
-from torch.autograd import Variable
 import torch.nn.functional as F
-from torchvision.models import vgg16
-
-
-# https://github.com/shelhamer/fcn.berkeleyvision.org/blob/master/surgery.py
-def get_upsampling_weight(in_channels, out_channels, kernel_size):
-    """Make a 2D bilinear kernel suitable for upsampling"""
-    factor = (kernel_size + 1) // 2
-    if kernel_size % 2 == 1:
-        center = factor - 1
-    else:
-        center = factor - 0.5
-    og = np.ogrid[:kernel_size, :kernel_size]
-    filt = (1 - abs(og[0] - center) / factor) * \
-           (1 - abs(og[1] - center) / factor)
-    weight = np.zeros((in_channels, out_channels, kernel_size, kernel_size),
-                      dtype=np.float64)
-    weight[range(in_channels), range(out_channels), :, :] = filt
-    return torch.from_numpy(weight).float()
 
 
 class ConvGen(nn.Module):
-    ''''''
+    '''Generator'''
     def __init__(self):
         super(ConvGen, self).__init__()
 
@@ -83,7 +55,7 @@ class ConvGen(nn.Module):
         h = x
         h = self.conv1(h)
         h = self.bn1(h)
-        h = self.relu1(h) # 64,112,112
+        h = self.relu1(h) # 64,112,112 (if input is 224x224)
         pool1 = h
 
         h = self.conv2(h)
@@ -95,7 +67,7 @@ class ConvGen(nn.Module):
         h = self.bn3(h)
         h = self.relu3(h)
         pool3 =h
-        
+
         h = self.conv4(h) # 512,14,14
         h = self.bn4(h)
         h = self.relu4(h)
@@ -140,7 +112,7 @@ class ConvGen(nn.Module):
                 m.weight.data.normal_(0, math.sqrt(2. / n))
 
 class ConvDis(nn.Module):
-    ''''''
+    '''Discriminator'''
     def __init__(self, large=False):
         super(ConvDis, self).__init__()
 
@@ -179,7 +151,7 @@ class ConvDis(nn.Module):
         h = x
         h = self.conv1(h)
         h = self.bn1(h)
-        h = self.relu1(h) # 64,112,112
+        h = self.relu1(h) # 64,112,112 (if input is 224x224)
 
         h = self.conv2(h)
         h = self.bn2(h)
@@ -214,9 +186,3 @@ class ConvDis(nn.Module):
             if isinstance(m, nn.ConvTranspose2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
                 m.weight.data.normal_(0, math.sqrt(2. / n))
-
-
-
-
-if __name__ == '__main__':
-    model = FCN32()
