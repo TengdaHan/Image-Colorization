@@ -33,13 +33,20 @@ The model is universal for all kinds of colorful image dataset. Three datasets a
 
 ### Prepare Dataset
 
-not ready yet
+#### OxFlower
+Download the dataset from their [offical webpage](http://www.robots.ox.ac.uk/~vgg/data/flowers/17/). Make sure `jpg/` and `datasplits.mat` are in the same directory.
+
+#### SpongeBob SquarePants
+Download from [here (Google Drive)](https://drive.google.com/file/d/1yaSHnqFiGT2VwT373lY_E3AJpr6r9b4l/view?usp=sharing).
+
+#### SC2Replay
+Download from [here (Google Drive)](https://drive.google.com/file/d/1MHPz1a8aUwSpu3ozRjFiZuNkrDxPl8qx/view?usp=sharing).
 
 ### Training (and validation)
 
 * Example command to train SC2 dataset:
 
-`python gan_main.py --path my_path --dataset sc2 --batch_size 32 --lr 1e-3 --num_epoch 50 --lamb 100 -p -s --gpu 0`
+`python gan_main.py my_path --dataset sc2 --batch_size 32 --lr 1e-3 --num_epoch 50 --lamb 100 -s --gpu 0`
 
 Replace `my_path` by the root path of SC2 dataset. 
 

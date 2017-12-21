@@ -22,9 +22,9 @@ import matplotlib.pyplot as plt
 
 
 parser = argparse.ArgumentParser(description='Colorization using GAN')
-parser.add_argument('path', type='str',
+parser.add_argument('path', type=str,
                     help='Root path for dataset')
-parser.add_argument('dataset', type='str'
+parser.add_argument('--dataset', type=str,
                     help='which dataset?', choices=['sc2','flower','bob'])
 parser.add_argument('--large', action="store_true",
                     help='Use larger images?')
@@ -155,11 +155,11 @@ def main():
 
     global img_path
     size = ''
-    size = 'Large' if args.large
-    img_path = 'img/%s/GANBob%s_%dL1_bs%d_%s_lr%s/' \
-               % (date, size, args.lamb, args.batch_size, 'Adam', str(args.lr))
-    model_path = 'model/%s/GANBob%s_%dL1_bs%d_%s_lr%s/' \
-               % (date, size, args.lamb, args.batch_size, 'Adam', str(args.lr))
+    if args.large: size = '_Large'
+    img_path = 'img/%s/GAN_%s%s_%dL1_bs%d_%s_lr%s/' \
+               % (date, args.dataset, size, args.lamb, args.batch_size, 'Adam', str(args.lr))
+    model_path = 'model/%s/GAN_%s%s_%dL1_bs%d_%s_lr%s/' \
+               % (date, args.dataset, size, args.lamb, args.batch_size, 'Adam', str(args.lr))
     if not os.path.exists(img_path):
         os.makedirs(img_path)
     if not os.path.exists(model_path):
@@ -226,7 +226,7 @@ def train(train_loader, model_G, model_D, optimizer_G, optimizer_D, epoch, itera
         output = model_D(target)
         label = torch.FloatTensor(target.size(0)).fill_(real_label).cuda()
         labelv = Variable(label)
-        errD_real = criterion(output, labelv)
+        errD_real = criterion(torch.squeeze(output), labelv)
         errD_real.backward()
         D_x = output.data.mean()
 
@@ -234,7 +234,7 @@ def train(train_loader, model_G, model_D, optimizer_G, optimizer_D, epoch, itera
         fake =  model_G(data)
         labelv = Variable(label.fill_(fake_label))
         output = model_D(fake.detach())
-        errD_fake = criterion(output, labelv)
+        errD_fake = criterion(torch.squeeze(output), labelv)
         errD_fake.backward()
         D_G_x1 = output.data.mean()
 
@@ -247,7 +247,7 @@ def train(train_loader, model_G, model_D, optimizer_G, optimizer_D, epoch, itera
         model_G.zero_grad()
         labelv = Variable(label.fill_(real_label))
         output = model_D(fake)
-        errG_GAN = criterion(output, labelv)
+        errG_GAN = criterion(torch.squeeze(output), labelv)
         errG_L1 = L1(fake.view(fake.size(0),-1), target.view(target.size(0),-1))
 
         errG = errG_GAN + args.lamb * errG_L1
@@ -305,7 +305,6 @@ def validate(val_loader, model_G, model_D, optimizer_G, optimizer_D, epoch):
 
     for i, (data, target) in enumerate(val_loader):
         data, target = Variable(data.cuda()), Variable(target.cuda())
-
         ########################
         # D network
         ########################
@@ -313,15 +312,13 @@ def validate(val_loader, model_G, model_D, optimizer_G, optimizer_D, epoch):
         output = model_D(target)
         label = torch.FloatTensor(target.size(0)).fill_(real_label).cuda()
         labelv = Variable(label)
-        errD_real = criterion(output, labelv)
-        # D_x = output.data.mean()
+        errD_real = criterion(torch.squeeze(output), labelv)
 
         # validate with fake
         fake =  model_G(data)
         labelv = Variable(label.fill_(fake_label))
         output = model_D(fake.detach())
-        errD_fake = criterion(output, labelv)
-        # D_G_x1 = output.data.mean()
+        errD_fake = criterion(torch.squeeze(output), labelv)
 
         errD = errD_real + errD_fake
 
@@ -330,7 +327,7 @@ def validate(val_loader, model_G, model_D, optimizer_G, optimizer_D, epoch):
         ########################
         labelv = Variable(label.fill_(real_label))
         output = model_D(fake)
-        errG_GAN = criterion(output, labelv)
+        errG_GAN = criterion(torch.squeeze(output), labelv)
         errG_L1 = L1(fake.view(fake.size(0),-1), target.view(target.size(0),-1))
 
         errG = errG_GAN + args.lamb * errG_L1
