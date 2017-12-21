@@ -56,7 +56,7 @@ Image samples created during validation will be saved in `img/`; and the model w
 
 * __Testing is not implemented in this version__. But you can prepare a testing dataset and run command like:
 
-`python gan_main.py --path my_path --dataset sc2 --test my_path --gpu 0`
+`python gan_main.py my_path --dataset sc2 --test my_path --gpu 0`
 
 to test the model with unseen images. Replace `my_path` by the path of the model that was saved during the training process.
 
