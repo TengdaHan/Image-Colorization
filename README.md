@@ -34,7 +34,7 @@ The model is universal for all kinds of colorful image dataset. Three datasets a
 ### Prepare Dataset
 
 #### OxFlower
-Download the dataset from their [offical webpage](http://www.robots.ox.ac.uk/~vgg/data/flowers/17/). Make sure `jpg/` and `datasplits.mat` are in the same directory.
+Download the dataset from [VGG webpage](http://www.robots.ox.ac.uk/~vgg/data/flowers/17/). Make sure `jpg/` and `datasplits.mat` are in the same directory.
 
 #### SpongeBob SquarePants
 Download from [here (Google Drive)](https://drive.google.com/file/d/1yaSHnqFiGT2VwT373lY_E3AJpr6r9b4l/view?usp=sharing).
