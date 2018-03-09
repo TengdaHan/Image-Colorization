@@ -1,7 +1,7 @@
 # Image Colorization using GANs
 
 ## Introduction
-This repository implements Conditional GANs to convert images from greyscale to RGB.
+This repository is the implementation of Conditional GANs, to convert images from greyscale to RGB.
 The input of the network is 1-channel greyscale image (specifically, the 'L' channel of LAB color space), and the Generator will create a 3-channel colorful version of the input image. 
 
 The generator has an encoder-decoder architecture; the discriminator is just one encoder plus fully-connected layers which gives one-class output. Skip-connection is applied in generator (U-Net). For 224x224 images, the architecture of generator is shown below. 
@@ -62,7 +62,7 @@ to test the model with unseen images. Replace `my_path` by the path of the model
 
 ## Result
 
-Some results are displayed here. A group of 3 images are put together hozizontally. The first column is greyscale image (input); the middle column is the raw image (ground truth); the third column is generated image (output). Ideally, third column should looks similar with second column. All these output images are generated on testing set. 
+Some results are displayed here. A group of 3 images is put together hozizontally. The first column is greyscale image (input); the middle column is the raw image (ground truth); the third column is generated image (output). Ideally, third column should look similar with second column. All these output images are generated on testing set. 
 
 SC2Replay with 480x480 image size:
 
