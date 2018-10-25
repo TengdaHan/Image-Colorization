@@ -1,5 +1,7 @@
 # Image Colorization using GANs
 
+[See project report](asset/image-colorization-deep.pdf)
+
 ## Introduction
 This repository is the implementation of Conditional GANs, to convert images from greyscale to RGB.
 The input of the network is 1-channel greyscale image (specifically, the 'L' channel of LAB color space), and the Generator will create a 3-channel colorful version of the input image. 
